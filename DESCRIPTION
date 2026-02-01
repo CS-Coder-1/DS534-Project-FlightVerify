@@ -1,0 +1,22 @@
+Package: flightverify
+Title: Verify Airline Delay Claims with OpenSky Data
+Version: 0.0.1.9000
+Authors@R: c(
+    person("FlightVerify", "Team", email = "team@example.com", role = c("aut", "cre"))
+  )
+Description: Tools to authenticate with the OpenSky Network API and retrieve
+    airport arrivals and departures for delay verification workflows.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Imports:
+    httr2,
+    jsonlite,
+    tibble,
+    lubridate,
+    cli
+Suggests:
+    testthat,
+    vcr (>= 0.6.0)
+Config/testthat/edition: 3
