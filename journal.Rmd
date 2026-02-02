@@ -3,7 +3,7 @@
 ### Jan. 21
 Initial project planning and researching. We did priliminary research on packages and initially
 thought we would make a wrapper on the Luftansa API, but found that there already is a prexisting
-and comphrehensie R Luftansa API wrapper project from 8 years ago, so we decided to use a different flight
+and comphrehensive R Luftansa API wrapper project from 8 years ago, so we decided to use a different flight
 data API, and our research was focused on finding a better API without an R wrapper.
 
 ### Jan. 22
@@ -16,4 +16,8 @@ Day 1 of development, created the github repo with template files.
 Worked on setting up the authentication process using OAuth2 to securily store API credentials and
 get info from it in JSON format.
 
-### Jan. 25
+### Jan. 25 - Jan 31
+Worked on the remaining package components and wrote comphrehesive documentation.
+
+### Feb 1 - Feb 2
+Developed unit tests to verify that each function works with all tests passing.
