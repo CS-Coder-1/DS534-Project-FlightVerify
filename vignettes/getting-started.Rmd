@@ -1,0 +1,392 @@
+---
+title: "Getting Started with flightverify"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with flightverify}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+````{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 8,
+  fig.height = 6,
+  warning = FALSE,
+  message = FALSE
+)
+````
+
+## Introduction
+
+The `flightverify` package provides an R interface to the OpenSky Network API, allowing you to retrieve real-time and historical flight data. This vignette demonstrates the main features of the package and shows how to visualize flight data.
+
+## Installation
+````{r eval=FALSE}
+# Install from GitHub
+devtools::install_github("yourusername/flightverify")
+````
+
+## Setup
+````{r setup}
+library(flightverify)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# Use anonymous access for this demo
+opensky_auth_anonymous()
+````
+
+## Authentication
+
+The OpenSky Network API supports both anonymous and authenticated access. Authenticated users get higher rate limits.
+````{r eval=FALSE}
+# Authenticate with OAuth2 (requires OpenSky account)
+opensky_auth(
+  client_id = Sys.getenv("OPENSKY_CLIENT_ID"),
+  client_secret = Sys.getenv("OPENSKY_CLIENT_SECRET")
+)
+
+# Or use anonymous access
+opensky_auth_anonymous()
+````
+
+## Getting Current Aircraft States
+
+The `get_states()` function retrieves current positions and information for all aircraft tracked by OpenSky.
+````{r}
+# Get all current aircraft states
+states <- get_states(auth = FALSE)
+
+# Preview the data
+head(states, 3)
+
+# Summary statistics
+cat("Total aircraft tracked:", nrow(states), "\n")
+cat("Aircraft on ground:", sum(states$on_ground, na.rm = TRUE), "\n")
+cat("Aircraft in flight:", sum(!states$on_ground, na.rm = TRUE), "\n")
+````
+
+### Filtering by Geographic Region
+
+You can filter aircraft to a specific geographic region using a bounding box:
+````{r}
+# Define bounding box for Vancouver area
+vancouver_bbox <- list(
+  min_lat = 49.0,
+  max_lat = 50.0,
+  min_lon = -123.5,
+  max_lon = -122.5
+)
+
+# Get aircraft in Vancouver area
+local_states <- get_states(bbox = vancouver_bbox, auth = FALSE)
+
+cat("Aircraft in Vancouver area:", nrow(local_states), "\n")
+````
+
+## Visualization 1: Aircraft Positions Map
+
+Let's visualize aircraft positions on a map:
+````{r aircraft-map}
+# Filter to aircraft with valid positions
+states_with_position <- states %>%
+  filter(!is.na(longitude), !is.na(latitude))
+
+# Create a world map of aircraft positions
+ggplot(states_with_position, aes(x = longitude, y = latitude)) +
+  geom_point(aes(color = on_ground), alpha = 0.5, size = 0.8) +
+  scale_color_manual(
+    values = c("TRUE" = "red", "FALSE" = "blue"),
+    labels = c("TRUE" = "On Ground", "FALSE" = "In Flight"),
+    name = "Status"
+  ) +
+  coord_map("mercator", xlim = c(-180, 180), ylim = c(-85, 85)) +
+  labs(
+    title = "Global Aircraft Positions",
+    subtitle = paste("Real-time data for", nrow(states_with_position), "aircraft"),
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    legend.position = "bottom"
+  )
+````
+
+## Visualization 2: Altitude Distribution
+
+Let's examine the altitude distribution of aircraft in flight:
+````{r altitude-dist}
+# Filter to aircraft in flight with valid altitude
+airborne <- states %>%
+  filter(!on_ground, !is.na(baro_altitude), baro_altitude > 0)
+
+ggplot(airborne, aes(x = baro_altitude)) +
+  geom_histogram(bins = 50, fill = "steelblue", alpha = 0.7) +
+  geom_vline(
+    xintercept = median(airborne$baro_altitude, na.rm = TRUE),
+    linetype = "dashed",
+    color = "red",
+    size = 1
+  ) +
+  annotate(
+    "text",
+    x = median(airborne$baro_altitude, na.rm = TRUE),
+    y = Inf,
+    label = paste("Median:", round(median(airborne$baro_altitude, na.rm = TRUE)), "m"),
+    vjust = 2,
+    color = "red"
+  ) +
+  labs(
+    title = "Altitude Distribution of Aircraft in Flight",
+    subtitle = paste("Based on", nrow(airborne), "aircraft"),
+    x = "Barometric Altitude (meters)",
+    y = "Count"
+  ) +
+  theme_minimal()
+````
+
+## Airport Data
+
+The package includes reference data for Canadian airports:
+````{r}
+# Get Canadian airports
+airports <- get_canadian_airports()
+print(airports)
+````
+
+## Airport Arrivals and Departures
+
+Retrieve flight arrivals and departures for specific airports:
+````{r}
+# Define time window (last 24 hours)
+end_time <- Sys.time()
+begin_time <- end_time - (24 * 3600)
+
+# Get arrivals at Vancouver airport
+arrivals <- get_airport_arrivals("CYVR", begin_time, end_time, auth = FALSE)
+cat("Arrivals at CYVR:", nrow(arrivals), "\n")
+
+# Get departures from Vancouver airport
+departures <- get_airport_departures("CYVR", begin_time, end_time, auth = FALSE)
+cat("Departures from CYVR:", nrow(departures), "\n")
+````
+
+## Visualization 3: Flight Activity Timeline
+
+If we have arrival/departure data, let's visualize the timeline:
+````{r flight-timeline, eval=nrow(arrivals) > 0 || nrow(departures) > 0}
+# Combine arrivals and departures
+if (nrow(arrivals) > 0) {
+  arrivals_plot <- arrivals %>%
+    mutate(type = "Arrival", time = last_seen) %>%
+    select(time, type, callsign)
+} else {
+  arrivals_plot <- data.frame(time = as.POSIXct(character()), type = character(), callsign = character())
+}
+
+if (nrow(departures) > 0) {
+  departures_plot <- departures %>%
+    mutate(type = "Departure", time = first_seen) %>%
+    select(time, type, callsign)
+} else {
+  departures_plot <- data.frame(time = as.POSIXct(character()), type = character(), callsign = character())
+}
+
+flight_activity <- bind_rows(arrivals_plot, departures_plot)
+
+if (nrow(flight_activity) > 0) {
+  ggplot(flight_activity, aes(x = time, fill = type)) +
+    geom_histogram(bins = 24, alpha = 0.7, position = "identity") +
+    scale_fill_manual(
+      values = c("Arrival" = "green", "Departure" = "orange"),
+      name = "Flight Type"
+    ) +
+    labs(
+      title = "Flight Activity at CYVR",
+      subtitle = "Arrivals and Departures over 24 hours",
+      x = "Time",
+      y = "Number of Flights"
+    ) +
+    theme_minimal() +
+    theme(legend.position = "bottom")
+} else {
+  cat("No flight data available for visualization\n")
+}
+````
+
+## Visualization 4: Regional Flight Density
+
+Let's create a density map of aircraft in a specific region:
+````{r regional-density}
+# Focus on North America
+north_america_bbox <- list(
+  min_lat = 25,
+  max_lat = 50,
+  min_lon = -130,
+  max_lon = -65
+)
+
+# Get aircraft in North America
+na_states <- get_states(bbox = north_america_bbox, auth = FALSE)
+
+# Filter to valid positions
+na_with_pos <- na_states %>%
+  filter(!is.na(longitude), !is.na(latitude))
+
+if (nrow(na_with_pos) > 0) {
+  ggplot(na_with_pos, aes(x = longitude, y = latitude)) +
+    geom_bin2d(bins = 30) +
+    scale_fill_gradient(
+      low = "yellow",
+      high = "red",
+      name = "Aircraft\nCount"
+    ) +
+    coord_map("mercator") +
+    labs(
+      title = "Aircraft Density Map - North America",
+      subtitle = paste("Based on", nrow(na_with_pos), "aircraft"),
+      x = "Longitude",
+      y = "Latitude"
+    ) +
+    theme_minimal() +
+    theme(legend.position = "right")
+}
+````
+
+## Visualization 5: Velocity Distribution
+
+Analyze the velocity of aircraft:
+````{r velocity-dist}
+# Filter to aircraft with valid velocity data
+with_velocity <- states %>%
+  filter(!is.na(velocity), velocity > 0, !on_ground)
+
+if (nrow(with_velocity) > 0) {
+  ggplot(with_velocity, aes(x = velocity)) +
+    geom_density(fill = "skyblue", alpha = 0.7) +
+    geom_vline(
+      xintercept = mean(with_velocity$velocity, na.rm = TRUE),
+      linetype = "dashed",
+      color = "red",
+      size = 1
+    ) +
+    annotate(
+      "text",
+      x = mean(with_velocity$velocity, na.rm = TRUE),
+      y = Inf,
+      label = paste("Mean:", round(mean(with_velocity$velocity, na.rm = TRUE)), "m/s"),
+      vjust = 2,
+      color = "red"
+    ) +
+    labs(
+      title = "Velocity Distribution of Aircraft in Flight",
+      subtitle = paste("Based on", nrow(with_velocity), "aircraft"),
+      x = "Velocity (m/s)",
+      y = "Density"
+    ) +
+    theme_minimal()
+}
+````
+
+## Flight Tracking
+
+Retrieve the trajectory of a specific aircraft:
+````{r eval=FALSE}
+# Get track for a specific aircraft (example ICAO24)
+track <- get_track_by_aircraft("a12345", time = Sys.time() - 3600, auth = FALSE)
+
+# View track information
+print(track$callsign)
+print(track$start_time)
+print(track$end_time)
+
+# View waypoints
+head(track$path)
+````
+
+## Summary
+
+The `flightverify` package provides:
+
+- **Real-time aircraft data**: Get current positions and states for all tracked aircraft
+- **Airport operations**: Retrieve arrivals and departures for any airport
+- **Flight tracking**: Access detailed trajectory data for individual flights
+- **Geographic filtering**: Focus on specific regions using bounding boxes
+- **Rich data**: Access altitude, velocity, heading, and more for each aircraft
+
+## Rate Limits
+
+- **Anonymous access**: Limited to 400 credits per day
+- **Authenticated access**: Higher limits based on account type
+
+For production use or frequent queries, we recommend creating a free account at https://opensky-network.org/ and using OAuth2 authentication.
+
+## Learn More
+
+- OpenSky Network: https://opensky-network.org/
+- API Documentation: https://openskynetwork.github.io/opensky-api/
+- Package Repository: https://github.com/yourusername/flightverify
+````
+````
+
+## Step 3: Build the Vignette
+````r
+# Build the vignette
+devtools::build_vignettes()
+
+# Preview the vignette
+devtools::build_rmd("vignettes/getting-started.Rmd")
+````
+
+## Step 4: Check All Function Documentation
+
+Make sure all your exported functions have complete documentation:
+````r
+# Check documentation completeness
+devtools::document()
+
+# View documentation for each function
+?get_states
+?get_airport_arrivals
+?get_airport_departures
+?get_track_by_aircraft
+?get_own_states
+?get_canadian_airports
+?opensky_auth
+?opensky_auth_anonymous
+````
+
+## Step 5: Create a pkgdown Site (Optional but Impressive)
+````r
+# Install pkgdown
+install.packages("pkgdown")
+
+# Build a documentation website
+pkgdown::build_site()
+````
+
+This creates a beautiful website with all your documentation!
+
+## Step 6: Verify Everything
+````r
+# Full package check
+devtools::check()
+
+# Should pass with 0 errors, 0 warnings, 0 notes
+````
+
+---
+
+Run these commands and let me know:
+1. Did the vignette build successfully?
+2. Any errors when running `devtools::check()`?
+
+Once the vignette builds, you can view it with:
+````r
+# View the built vignette
+browseVignettes("flightverify")
+````

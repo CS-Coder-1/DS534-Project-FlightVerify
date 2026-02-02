@@ -9,3 +9,4 @@
 .Rproj.user
 .httr-oauth
 .quarto
+inst/doc
