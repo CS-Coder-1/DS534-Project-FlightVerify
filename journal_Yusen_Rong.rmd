@@ -1,1 +1,50 @@
----title: "DS534 Project Journal (Yusen Rong)"author: "Yusen Rong"date: "2026-02-03"output: html_document---## 2026-01-21I started with project planning and researched available flight data APIs. I initially explored theLufthansa API, but found an older, comprehensive R wrapper already available, so I decided to lookfor a better API without an existing R package.## 2026-01-22I reviewed the OpenSky Network API documentation and confirmed that its arrivals, departures, andtracks endpoints match our use case. I also noted that OAuth2 client-credentials is required forhigher rate limits.## 2026-01-23I set up the GitHub repository and R package scaffold (license, contributing guide, code ofconduct, and basic package metadata).## 2026-01-24I implemented authentication helpers and a shared request layer with retries so all API callsfollow the same error-handling path.## 2026-01-25I added airport arrivals/departures wrappers, ICAO validation, time-window checks, and a smallCanadian airports reference dataset.## 2026-01-30I completed Day-2 analysis functions: landing-rate calculation, delay verification, and arule-based probability estimator. I also added baseline data support and tests, and expanded theREADME with usage notes.## 2026-02-02I pulled the latest team updates and merged them with my branch. This brought in state-vector andtrack endpoints, vignettes, and man pages. I resolved conflicts and aligned overlapping files withthe upstream package versions.## 2026-02-03I reviewed the merged codebase for issues and documented any gaps. Next I will regenerate roxygendocs for new functions and validate behavior with package checks on my local R setup.
+---
+title: "DS534 Project Journal (Yusen Rong)"
+author: "Yusen Rong"
+date: "2026-02-03"
+output: html_document
+---
+
+## 2026-01-21
+
+I started with project planning and researched available flight data APIs. I initially explored the
+Lufthansa API, but found an older, comprehensive R wrapper already available, so I decided to look
+for a better API without an existing R package.
+
+## 2026-01-22
+
+I reviewed the OpenSky Network API documentation and confirmed that its arrivals, departures, and
+tracks endpoints match our use case. I also noted that OAuth2 client-credentials is required for
+higher rate limits.
+
+## 2026-01-23
+
+I set up the GitHub repository and R package scaffold (license, contributing guide, code of
+conduct, and basic package metadata).
+
+## 2026-01-24
+
+I implemented authentication helpers and a shared request layer with retries so all API calls
+follow the same error-handling path.
+
+## 2026-01-25
+
+I added airport arrivals/departures wrappers, ICAO validation, time-window checks, and a small
+Canadian airports reference dataset.
+
+## 2026-01-30
+
+I completed Day-2 analysis functions: landing-rate calculation, delay verification, and a
+rule-based probability estimator. I also added baseline data support and tests, and expanded the
+README with usage notes.
+
+## 2026-02-02
+
+I pulled the latest team updates and merged them with my branch. This brought in state-vector and
+track endpoints, vignettes, and man pages. I resolved conflicts and aligned overlapping files with
+the upstream package versions.
+
+## 2026-02-03
+
+I reviewed the merged codebase for issues and documented any gaps. Next I will regenerate roxygen
+docs for new functions and validate behavior with package checks on my local R setup.
